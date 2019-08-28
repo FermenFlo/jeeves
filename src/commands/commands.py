@@ -4,10 +4,12 @@ from .base_commands import Command
 from scipy.stats.mstats import gmean
 
 def password_protected(function):
-
-    def protected_function(*args, **kwargs): 
-        if kwargs['password_callback']():
-            function(*args, **kwargs)
+    def protected_function(*args, **kwargs):
+        assert args, "Password protected methods can not be static or class methods."
+        func_self = args[0]
+        if func_self.send_password_callback():
+            print('unlocked!')
+            return function(*args, **kwargs)
 
     return protected_function
 
@@ -20,6 +22,7 @@ class WhoAmI(Command):
         "tell me your name",
         "who am i speaking to"
     ]
+
 
     def __str__(self):
         return "Tell you who I am"
@@ -34,10 +37,11 @@ class WhoAmI(Command):
 
         return False
 
-    @staticmethod
     @password_protected
-    def run_command(input_phrase = None, jeeves = None, password_callback = None):
-        jeeves.say(f"I'm your personal servant, {jeeves.user_name}. My name is {jeeves.name}.")
+    def run_command(self):
+        print('running')
+        self.jeeves.say(f"I'm your personal servant, {self.jeeves.user_name}. My name is {self.jeeves.name}.")
+        print('ran')
 
 class ChangeUserName(Command):
     PHRASES = [
@@ -67,9 +71,8 @@ class ChangeUserName(Command):
 
         return False
 
-    @staticmethod
     @password_protected
-    def run_command(input_phrase = None, jeeves = None, password_callback = None):
+    def run_command(self, input_phrase = None, jeeves = None, password_callback = None):
         jeeves.say(f"I'm your personal servant, {jeeves.user_name}. My name is {jeeves.name}")
 
 
