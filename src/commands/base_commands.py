@@ -15,6 +15,7 @@ class Command(ABC):
         if response.payload['unlock_status'] is True:
             return True
 
+
         
 
     @property

@@ -123,7 +123,7 @@ class Jeeves:
 
         if len(valid_commands) >= 1:
             command = valid_commands[0](self)
-            command.run_command(input_phrase=self.current_phrase, jeeves=self, password_callback=self.password_request)
+            command.run_command()
 
         # elif:  # Write logic to allow user to pick 1 of the matching commands
         #     print('TODO')
@@ -158,7 +158,7 @@ class Jeeves:
 
     def parse_callback(self, callback):
         if callback.callback_type == 'password':
-            callback.response_payload = self.password_request()  # return the current unlock status
+            callback.payload['unlock_status'] = self.password_request()  # return the current unlock status
 
         else:
             pass

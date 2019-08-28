@@ -8,7 +8,6 @@ def password_protected(function):
         assert args, "Password protected methods can not be static or class methods."
         func_self = args[0]
         if func_self.send_password_callback():
-            print('unlocked!')
             return function(*args, **kwargs)
 
     return protected_function
@@ -39,9 +38,7 @@ class WhoAmI(Command):
 
     @password_protected
     def run_command(self):
-        print('running')
         self.jeeves.say(f"I'm your personal servant, {self.jeeves.user_name}. My name is {self.jeeves.name}.")
-        print('ran')
 
 class ChangeUserName(Command):
     PHRASES = [
