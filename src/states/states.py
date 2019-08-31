@@ -84,7 +84,7 @@ class DecidingCommand(State):
             self.handle_no_matches()
 
         if len(self.matches) > 1:
-            self.handle_multiple_matches()s
+            self.handle_multiple_matches()
 
         else:
             self.run_command()
@@ -97,12 +97,68 @@ class RunningCommand(State):
         super().__init__()
         self.command = command(self.jeeves)
 
-    def parse_command_callback(self, callback):
-        pass
+    @property
+    def command_is_running(self):
+        self.callback['status'] if self.callback else True
+
+    def handle_password_callback(self, payload):
+         if self.jeeves.password_unlocked:
+            payload['unlock_status'] = True
+
+        self.jeeves.say("This is a protected command. What is the password?")
+        input_password = self.listen(60)
+
+        if fuzz.ratio(input_password, self.jeeves.PASSWORD) > self.jeeves.PASSWORD_THRESHOLD:
+            if np.random.random() < 0.05:
+                self.say("Lucky guess. I'm watching you", wait = False)
+
+            self.jeeves.password_unlocked = True
+
+            payload['unlock_status'] = True
+
+        else:
+            self.say("INTRUDER! INTRUDER!")
+            self.jeeves.password_unlocked = False
+
+    def handle_input_callback(self, payload):
+        for ask in payload['response_payload']:
+            self.jeeves.say(ask, wait = False)
+            response = self.listen(10)
+            payload['response_payload'] = response
+
+        return payload
+
+    def handle_confirmation_callback(self, payload):
+        for ask in payload['response_payload']:
+            self.jeeves.say(ask, wait = False)
+            response = self.listen(10)
+            payload['response_payload'] = response
+
+        return payload
+
+    def parse_general_callback(self, callback):
+        status = callback['status']
+        callback_type = callback['callback_type']
+        payload = callback['response_payload']
+
+        # Success
+        if status == 0:
+            return self.reset_state(self.jeeves)
+
+
+        # Error, just say you fucked up and return the reset state
+        if status == 2:
+            self.jeeves.say()
+            return self.reset_state(self.jeeves)
+
+        # Pending, reuires user input
+        if status == 1:
+            handling_func_name = f"handle_{callback_type}_callback"
+            handling_func = getattr(self, handling_func_name)
+            payload = handling_func(payload)
+
+            return payload
 
     def run(self):
-        self.command_is_running = True
         while self.command_is_running:
-
-            callback = self.command.run()
-            self.parse_
+            self.parse_general_callback(self.command.run())

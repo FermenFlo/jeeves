@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
-
+from fuzzywuzzy import fuzz
+from .command_callbacks import PasswordCallback
 
 class Command(ABC):
     """ Abstract Base Class for all commands. A valid command must specify the following methods:"""
@@ -8,17 +9,13 @@ class Command(ABC):
         self.jeeves = jeeves
 
     def send_password_callback(self):
-        password_callback = PasswordCallback()
-        response = self.jeeves.parse_callback(password_callbck)
-
-        if response["unlock_status"] is True:
-            return True
+        return PasswordCallback()
 
     @classmethod
     def prob_match(cls, input_phrase):
         prob_match = max([fuzz.ratio(input_phrase, phrase) for phrase in cls.PHRASES])
 
-       return prob_match
+        return prob_match
 
     @property
     @classmethod

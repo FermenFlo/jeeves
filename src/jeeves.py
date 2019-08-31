@@ -4,7 +4,7 @@ import subprocess
 import numpy as np
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
-
+from .states import Queiescent
 from .commands import Command  # grab all commands that are subclasses of the Command ABC
 
 

@@ -22,7 +22,7 @@ class ErrorCallback(Callback):
     response_payload = {}
 
 
-class PasswordCalback(Callback):
+class PasswordCallback(Callback):
     """ The password callback requests a password unlock from Jeeves. Jeeves, after recognizing this
     callback will check its internal password state. A successful will change the response payload value
     to True and result in an unlock that lasts for 5 minutes for the current user. Otherwise, the payload

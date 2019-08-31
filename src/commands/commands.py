@@ -11,6 +11,15 @@ def password_protected(function):
 
     return protected_function
 
+def password_protected(function):
+    def protected_function(*args, **kwargs):
+        assert args, "Password protected methods can not be static or class methods."
+        func_self = args[0]
+        if func_self.send_password_callback():
+            return function(*args, **kwargs)
+
+    return protected_function
+
 
 class WhoAmI(Command):
     PHRASES = ["who are you", "what's your name", "what is your name", "tell me your name", "who am i speaking to"]
