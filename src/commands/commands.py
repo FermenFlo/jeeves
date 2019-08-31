@@ -1,7 +1,8 @@
 import subprocess
 from fuzzywuzzy import fuzz
-from .base_commands import Command
 from scipy.stats.mstats import gmean
+from .callbacks import PasswordCalback
+from abc import ABC, abstractmethod
 
 def password_protected(function):
     def protected_function(*args, **kwargs):
@@ -11,6 +12,42 @@ def password_protected(function):
             return function(*args, **kwargs)
 
     return protected_function
+
+
+class Command(ABC):
+    """ Abstract Base Class for all commands. A valid command must specify the following methods:"""
+
+    def __init__(self, jeeves):
+        self.jeeves = jeeves
+
+    def send_password_callback(self):
+        password_callback = PasswordCalback()
+        response = self.jeeves.parse_callback(password_callback)
+
+        if response.payload['unlock_status'] is True:
+            return True
+
+
+        
+
+    @property
+    @classmethod
+    @abstractmethod
+    def PHRASES(cls):
+        raise NotImplementedError
+
+    @classmethod
+    @abstractmethod
+    def valid_phrase(cls):
+        raise NotImplementedError
+
+    @classmethod
+    @abstractmethod
+    def run_command(cls):
+        raise NotImplementedError
+
+
+
 
 
 class WhoAmI(Command):
