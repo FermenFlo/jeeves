@@ -13,7 +13,7 @@ class Jeeves:
 
     DEFAULT_USER_NAME = "brian"
     DEFAULT_NAME = "servant"
-    PASSWORD = "turtle"
+    PASSWORD = "apple"
 
     NAME_THRESHOLD = 75
     COMMAND_THRESHOLD = 60
@@ -29,12 +29,15 @@ class Jeeves:
     ]
 
     def __init__(self):
+        self.state = Queiescent()
         self._user_name = self.DEFAULT_USER_NAME
         self._name = self.DEFAULT_NAME
 
-        self._last_password_unlock_time = datetime(2000, 1, 1)  # long time ago
+        self._last_password_unlock_time = datetime.min  # long time ago
 
         self.commands = self._load_commands()
+        self.active_command = None
+        self.active_phrase = ""
 
     def _load_commands(self):
         return Command.__subclasses__()
@@ -42,6 +45,10 @@ class Jeeves:
     @property
     def user_name(self):
         return self._user_name
+
+    @user_name.setter
+    def user_name(self, input_name):
+        self._user_name = input_name.lower()
 
     @property
     def password_unlocked(self):
@@ -59,11 +66,7 @@ class Jeeves:
             self._last_password_unlock_time = datetime.utcnow()
 
         else:
-            self._last_password_unlock_time = datetime(2000, 1, 1)
-
-    @user_name.setter
-    def user_name(self, input_name):
-        self._user_name = input_name.lower()
+            self._last_password_unlock_time = datetime.min
 
     @property
     def name(self):
@@ -108,29 +111,36 @@ class Jeeves:
 
         return ""  # Didn't get any input
 
+    # def start(self):
+    #     """ Starts Jeeves """
+    #     self.r = sr.Recognizer()
+    #     self.mic = sr.Microphone()
+
+    #     while True:
+    #         if self.activated:
+    #             self.take_command()
     def start(self):
         """ Starts Jeeves """
         self.r = sr.Recognizer()
         self.mic = sr.Microphone()
 
         while True:
-            if self.activated:
-                self.take_command()
+            self.state = self.state.run(self)
 
     def take_command(self):
         valid_commands = [cmd for cmd in self.commands if cmd.valid_phrase(self.current_phrase, jeeves=self)]
         valid_commands = sorted(valid_commands, reverse=True)
 
         if len(valid_commands) >= 1:
-            command = valid_commands[0](self)
-            command.run_command()
+            command = valid_commands[0]
+            command.run_command(input_phrase=self.current_phrase, jeeves=self, password_callback=self.password_request)
 
         # elif:  # Write logic to allow user to pick 1 of the matching commands
         #     print('TODO')
         #     pass
 
         else:  # couldn't understand user
-            self.say(np.random.choice(self.FALLBACK_MESSAGES))
+            self.say()  # Fallback message
 
     def password_request(self):
         if self.password_unlocked:
@@ -138,31 +148,25 @@ class Jeeves:
 
         self.say("This is a protected command. What is the password?")
         input_password = self.listen(n_seconds=60)
+
         if fuzz.ratio(input_password, self.PASSWORD) > self.PASSWORD_THRESHOLD:
             if np.random.random() > 0.95:
                 self.say("Lucky guess. I'm watching you")
 
             self.password_unlocked = True
-            
+            return True
 
         else:
             self.say("INTRUDER! INTRUDER!")
-            self.password_unlocked = False
+            self.password_unlocked = True
 
-        return self.password_unlocked
-
-
-    def say(self, text):
+    def say(self, text=None, wait=True):
         """ Speaks """
-        subprocess.call(["say", text])
+        text = text or np.random.choice(self.FALLBACK_MESSAGES)
 
-    def parse_callback(self, callback):
-        if callback.callback_type == 'password':
-            callback.payload['unlock_status'] = self.password_request()  # return the current unlock status
-
+        # Wait for subprocess to complete or not
+        if wait:
+            subprocess.call(["say", text])
         else:
-            pass
+            subprocess.Popen(["say", text])
 
-
-        return callback
-            
