@@ -4,7 +4,7 @@ import subprocess
 import numpy as np
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
-from .states import Queiescent
+from .states import Quiescent, RunningCommand
 from .commands import Command  # grab all commands that are subclasses of the Command ABC
 
 
@@ -12,8 +12,8 @@ class Jeeves:
     """ Jeeves """
 
     DEFAULT_USER_NAME = "brian"
-    DEFAULT_NAME = "servant"
-    PASSWORD = "apple"
+    DEFAULT_NAME = "samantha"
+    PASSWORD = "turtle"
 
     NAME_THRESHOLD = 75
     COMMAND_THRESHOLD = 60
@@ -29,15 +29,23 @@ class Jeeves:
     ]
 
     def __init__(self):
-        self.state = Queiescent()
+        self.state = Quiescent(self)
         self._user_name = self.DEFAULT_USER_NAME
         self._name = self.DEFAULT_NAME
 
         self._last_password_unlock_time = datetime.min  # long time ago
 
         self.commands = self._load_commands()
-        self.active_command = None
-        self.active_phrase = ""
+        self.current_phrase = ""
+
+        self.FALLBACK_MESSAGES = [
+        "I'm sorry, I didn't quite catch that. Maybe try annunciating for once in your god damn life",
+        "What?",
+        "bruh, speak up",
+        "sorry, I don't speak italian.",
+        f"you should speak up, {self.user_name}",
+        "aaaaaaaaa I'm awake. I totally wasn't sleeping.",
+    ]
 
     def _load_commands(self):
         return Command.__subclasses__()
@@ -54,6 +62,8 @@ class Jeeves:
     def password_unlocked(self):
         now = datetime.utcnow()
         time_since_last_unlock = (now - self._last_password_unlock_time).seconds
+        print(self._last_password_unlock_time)
+        print(now)
 
         if time_since_last_unlock <= 300:  # 5 minute lockout time
             return True
@@ -77,21 +87,10 @@ class Jeeves:
         self._name = input_name.lower()
 
     @property
-    def activated(self):
-        try:
-            with self.mic as source:
-                self.r.adjust_for_ambient_noise(source)
+    def active_command(self):
+        if isinstance(self.state, RunningCommand):
+            return self.state.command
 
-                audio = self.r.listen(source)
-                phrase = self.r.recognize_google(audio).lower()
-
-                name_called_prob = max([fuzz.ratio(x, self.name) for x in phrase.split()[:5]])
-                if name_called_prob >= self.NAME_THRESHOLD:
-                    self.current_phrase = phrase
-                    return True
-
-        except sr.UnknownValueError:
-            return False
 
     def listen(self, n_seconds=None):
         """ Standard method to listening for requests. Doesn't require activation phrase.
@@ -111,55 +110,6 @@ class Jeeves:
 
         return ""  # Didn't get any input
 
-    # def start(self):
-    #     """ Starts Jeeves """
-    #     self.r = sr.Recognizer()
-    #     self.mic = sr.Microphone()
-
-    #     while True:
-    #         if self.activated:
-    #             self.take_command()
-    def start(self):
-        """ Starts Jeeves """
-        self.r = sr.Recognizer()
-        self.mic = sr.Microphone()
-
-        while True:
-            self.state = self.state.run(self)
-
-    def take_command(self):
-        valid_commands = [cmd for cmd in self.commands if cmd.valid_phrase(self.current_phrase, jeeves=self)]
-        valid_commands = sorted(valid_commands, reverse=True)
-
-        if len(valid_commands) >= 1:
-            command = valid_commands[0]
-            command.run_command(input_phrase=self.current_phrase, jeeves=self, password_callback=self.password_request)
-
-        # elif:  # Write logic to allow user to pick 1 of the matching commands
-        #     print('TODO')
-        #     pass
-
-        else:  # couldn't understand user
-            self.say()  # Fallback message
-
-    def password_request(self):
-        if self.password_unlocked:
-            return True
-
-        self.say("This is a protected command. What is the password?")
-        input_password = self.listen(n_seconds=60)
-
-        if fuzz.ratio(input_password, self.PASSWORD) > self.PASSWORD_THRESHOLD:
-            if np.random.random() > 0.95:
-                self.say("Lucky guess. I'm watching you")
-
-            self.password_unlocked = True
-            return True
-
-        else:
-            self.say("INTRUDER! INTRUDER!")
-            self.password_unlocked = True
-
     def say(self, text=None, wait=True):
         """ Speaks """
         text = text or np.random.choice(self.FALLBACK_MESSAGES)
@@ -170,3 +120,11 @@ class Jeeves:
         else:
             subprocess.Popen(["say", text])
 
+    def start(self):
+        """ Starts Jeeves """
+        self.r = sr.Recognizer()
+        self.mic = sr.Microphone()
+
+        while True:
+            print(self.state)
+            self.state = self.state.run()

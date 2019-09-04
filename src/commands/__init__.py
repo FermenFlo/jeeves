@@ -1,2 +1,1 @@
-from .base_commands import Command
-from .commands import *
+from .commands import Command

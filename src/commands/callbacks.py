@@ -1,7 +1,36 @@
-# Password Unlock
-# * First asks Jeeves if it is unlocked
-# * Otherwise, requests password input from user
-from .base_commands import Callback
+from abc import ABC, abstractmethod
+
+
+class Callback(ABC):
+    """ Abstract Base Class for all callbacks. A valid callback must specify the following methods:"""
+
+    def __init__(self, response_payload={}):
+        self.reponse_payload = response_payload
+
+    @property
+    @classmethod
+    @abstractmethod
+    def status(cls):
+        """ Status lets Jeeves know whaat needs to happen next in terms of state and control flow.
+        The following are defined statuses:
+
+        0: Success; causes Jeeves to break out of command and return to queiescent state
+        1: Pending; causes Jeeves to something (or nothing) and return the callback to the command
+        2: Error; causes Jeeves to break out of command and return to queiescent state
+        """
+        raise NotImplementedError
+
+    @property
+    @classmethod
+    @abstractmethod
+    def callback_type(cls):
+        return ""
+
+    @property
+    @classmethod
+    @abstractmethod
+    def response_payload(cls):
+        return {}
 
 
 class SuccessCallback(Callback):
@@ -28,12 +57,14 @@ class PasswordCallback(Callback):
     to True and result in an unlock that lasts for 5 minutes for the current user. Otherwise, the payload
     value will remain False and Jeeves will remain password-protected. """
 
-    def __init__(self, response_payload={"unlock_status": False}):
+    def __init__(self, response_payload={"unlock_status": False}, n_attempts = 3):
         self.response_payload = response_payload
+        self.n_attempts = n_attempts
 
     status = 1
     callback_type = "password"
-
+    response_payload = {"unlock_status": False}
+    n_attempts = 3
 
 class InputCallback(Callback):
     """ The input callback is special in that it allows further user input. The response payload is
@@ -52,6 +83,7 @@ class InputCallback(Callback):
 
     status = 1
     callback_type = "input"
+    response_payload = {"": ""}
 
 
 class ConfirmationCallback(Callback):
@@ -65,3 +97,5 @@ class ConfirmationCallback(Callback):
 
     status = 1
     callback_type = "confirmation"
+    response_payload={"Are you sure?": False}
+

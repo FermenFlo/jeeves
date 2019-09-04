@@ -1,5 +1,7 @@
+import numpy as np
 from abc import ABC, abstractmethod
 from fuzzywuzzy import fuzz
+from ..commands import Command
 
 
 class State(ABC):
@@ -8,7 +10,7 @@ class State(ABC):
         self.jeeves = jeeves
 
     def listen(self, *args, **kwargs):
-        self.jeeves.listen(*args, **kwargs)
+        return self.jeeves.listen(*args, **kwargs)
 
     @staticmethod
     def reset_state(jeeves):
@@ -27,7 +29,7 @@ class Quiescent(State):
         phrase = self.listen()
         name_called_prob = max([fuzz.ratio(x, self.jeeves.name) for x in phrase.split()[:5]])
         if name_called_prob >= self.jeeves.NAME_THRESHOLD:
-            self.jeeves.activation_phrase = phrase
+            self.jeeves.current_phrase = phrase
             return True
 
     def run(self):
@@ -38,44 +40,46 @@ class Quiescent(State):
 
 class DecidingCommand(State):
 
+    DECIDING_MESSAGES = [
+        "What would you like me to do?",
+        "Can you repeat that?"
+
+    ]
+
     num_retries = 0
     max_retries = 3
 
     # This state has a special init in which it loads all current commands
-    def __init__(self):
-        super().__init__()
+    def __init__(self, jeeves):
+        super().__init__(jeeves)
         self.commands = self._load_commands()
 
     def _load_commands(self):
         return Command.__subclasses__()
 
     def match_commands(self, input_phrase):
-        prob_matches = {cmd: cmd.valid_phrase(input_phrase) for cmd in self.commands}
+        prob_matches = {cmd: cmd.prob_match(input_phrase) for cmd in self.commands}
         matches = [cmd for cmd, prob in prob_matches.items() if prob >= self.jeeves.COMMAND_THRESHOLD]
 
         return matches
 
     def handle_no_matches(self):
         while not self.matches and self.num_retries < self.max_retries:
-            self.jeeves.say()
-            retry_phrase = self.listed(60)
+            self.jeeves.say(np.random.choice(self.DECIDING_MESSAGES))
+            retry_phrase = self.listen(60)
             self.matches = self.match_commands(retry_phrase)
 
         if not self.matches:  # give up
             return self.reset_state(self.jeeves)
 
     def handle_multiple_matches(self):
-        options_string = f"Did you want me to: {" or ".join(self.matches)}"
+        options_string = f"Did you want me to: {' or '.join(self.matches)}"
         self.jeeves.say(options_string, wait=False)
-        option_phrase = listen()
+        option_phrase = self.listen()
 
         match = max(self.matches, key=lambda x: fuzz.partial_ratio(option_phrase, x))
 
         self.matches = [match]
-
-    def run_command(self):
-        matched_command = self.matches[0]
-        return RunningCommand(self.jeeves, matched_command)
 
     def run(self):
         self.matches = self.match_commands(self.jeeves.current_phrase)
@@ -86,39 +90,49 @@ class DecidingCommand(State):
         if len(self.matches) > 1:
             self.handle_multiple_matches()
 
-        else:
-            self.run_command()
+        match = self.matches[0]
+        return RunningCommand(self.jeeves, match)
 
 
 class RunningCommand(State):
 
     # This state has a special init in which it accepts a command
-    def __init__(self, command):
-        super().__init__()
-        self.command = command(self.jeeves)
+    def __init__(self, jeeves, command):
+        super().__init__(jeeves)
+
+        self.command = command(jeeves)
 
     @property
     def command_is_running(self):
-        self.callback['status'] if self.callback else True
+        try:
+            return self.callback.status
+
+        except AttributeError:
+            return True
 
     def handle_password_callback(self, payload):
-         if self.jeeves.password_unlocked:
-            payload['unlock_status'] = True
+        if self.jeeves.password_unlocked:
+            payload['unlock_status'] = True 
 
-        self.jeeves.say("This is a protected command. What is the password?")
-        input_password = self.listen(60)
+        input_password = self.listen(10)
+        print(input_password)
 
-        if fuzz.ratio(input_password, self.jeeves.PASSWORD) > self.jeeves.PASSWORD_THRESHOLD:
+        if any([fuzz.ratio(x, self.jeeves.PASSWORD) > self.jeeves.PASSWORD_THRESHOLD 
+                for x in input_password.split()]):
             if np.random.random() < 0.05:
-                self.say("Lucky guess. I'm watching you", wait = False)
+                self.jeeves.say("Lucky guess. I'm watching you", wait = False)
 
             self.jeeves.password_unlocked = True
-
             payload['unlock_status'] = True
+            self.jeeves.say('Password verified.')
 
         else:
-            self.say("INTRUDER! INTRUDER!")
+            self.callback.n_attempts -= 1
+            n_attempts = self.callback.n_attempts
             self.jeeves.password_unlocked = False
+
+            self.jeeves.say("Incorrect password!" + 
+            f"{self.callback.n_attempts} attempts remain." if self.callback.n_attempts else "")
 
     def handle_input_callback(self, payload):
         for ask in payload['response_payload']:
@@ -137,9 +151,10 @@ class RunningCommand(State):
         return payload
 
     def parse_general_callback(self, callback):
-        status = callback['status']
-        callback_type = callback['callback_type']
-        payload = callback['response_payload']
+        self.callback = callback
+        status = callback.status
+        callback_type = callback.callback_type
+        payload = callback.response_payload
 
         # Success
         if status == 0:
@@ -155,10 +170,12 @@ class RunningCommand(State):
         if status == 1:
             handling_func_name = f"handle_{callback_type}_callback"
             handling_func = getattr(self, handling_func_name)
-            payload = handling_func(payload)
-
-            return payload
+            self.callback.payload = handling_func(payload)
+            
+            return self.callback
 
     def run(self):
         while self.command_is_running:
-            self.parse_general_callback(self.command.run())
+            self.parse_general_callback(self.command.run(self.jeeves))
+
+        return Quiescent(self.jeeves)

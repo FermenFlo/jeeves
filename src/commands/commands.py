@@ -1,36 +1,68 @@
 import subprocess
 from fuzzywuzzy import fuzz
-from .base_commands import Command
 from scipy.stats.mstats import gmean
-
-
-def password_protected(function):
-    def protected_function(*args, **kwargs):
-        if kwargs["password_callback"]():
-            function(*args, **kwargs)
-
-    return protected_function
+from abc import ABC, abstractmethod
+from .callbacks import *
 
 def password_protected(function):
     def protected_function(*args, **kwargs):
-        assert args, "Password protected methods can not be static or class methods."
+        assert len(args), "Password protected methods can not be static or class methods."
         func_self = args[0]
         if func_self.send_password_callback():
             return function(*args, **kwargs)
+        
+        else:
+            pass
 
     return protected_function
 
+class Command(ABC):
+    """ Abstract Base Class for all commands. A valid command must specify the following methods:"""
+
+    def __init__(self, jeeves):
+        self.jeeves = jeeves
+
+    def send_password_callback(self):
+        if self.jeeves.password_unlocked is True:
+            return True
+
+        self.jeeves.say("This is a protected command. What is the password?")
+        
+        cb =  PasswordCallback()
+        while cb.n_attempts > 0 and not cb.response_payload['unlock_status']:
+            cb = self.jeeves.state.parse_general_callback(cb)
+
+        return cb.response_payload['unlock_status']
+
+    @classmethod
+    def prob_match(cls, input_phrase):
+        prob_match = max([fuzz.ratio(input_phrase, phrase) for phrase in cls.PHRASES])
+
+        return prob_match
+
+    @property
+    @classmethod
+    @abstractmethod
+    def PHRASES(cls):
+        raise NotImplementedError
+
+    @classmethod
+    @abstractmethod
+    def run(cls):
+        raise NotImplementedError
 
 class WhoAmI(Command):
-    PHRASES = ["who are you", "what's your name", "what is your name", "tell me your name", "who am i speaking to"]
+    PHRASES = ["who are you", "what's your name", "what is your name", 
+    "tell me your name", "who am i speaking to", "tell me who you are"]
 
     def __str__(self):
         return "Tell you who I am"
 
-    @staticmethod
     @password_protected
-    def run_command(input_phrase=None, jeeves=None, password_callback=None):
-        jeeves.say(f"I'm your personal servant, {jeeves.user_name}. My name is {jeeves.name}.")
+    def run(self, jeeves):
+        jeeves.say(f"I'm your personal servant {jeeves.user_name}. My name is {jeeves.name}.")
+        return SuccessCallback()
+
 
 
 class ChangeUserName(Command):
@@ -62,7 +94,7 @@ class ChangeUserName(Command):
 
     @staticmethod
     @password_protected
-    def run_command(input_phrase=None, jeeves=None, password_callback=None):
+    def run(input_phrase=None, jeeves=None, password_callback=None):
         jeeves.say(f"I'm your personal servant, {jeeves.user_name}. My name is {jeeves.name}")
 
 
