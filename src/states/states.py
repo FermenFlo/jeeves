@@ -12,6 +12,15 @@ class State(ABC):
     def listen(self, *args, **kwargs):
         return self.jeeves.listen(*args, **kwargs)
 
+    def wit_text_call(self, text):
+        response = self.jeeves.wit.message(text)
+
+        # Sort by highest probablilities first
+        for entity_list in response.get('entities', {}).values():
+            entity_list = sorted(entity_list, key = lambda x: -x['confidence'])
+
+        return response
+
     @staticmethod
     def reset_state(jeeves):
         return Quiescent(jeeves)
@@ -27,9 +36,13 @@ class Quiescent(State):
     @property
     def activated(self):
         phrase = self.listen()
-        name_called_prob = max([fuzz.ratio(x, self.jeeves.name) for x in phrase.split()[:5]])
+        name_called_probs = [fuzz.ratio(x, self.jeeves.name) for x in phrase.split()[:5]]
+        name_called_prob = max(name_called_probs)
+
         if name_called_prob >= self.jeeves.NAME_THRESHOLD:
-            self.jeeves.current_phrase = phrase
+            cutoff_ind = name_called_probs.index(name_called_prob) + 1
+            self.jeeves.current_phrase = ' '.join(phrase.split()[cutoff_ind:])
+
             return True
 
     def run(self):
@@ -39,6 +52,8 @@ class Quiescent(State):
 
 
 class DecidingCommand(State):
+
+    INTENT_THRESHOLD = .75
 
     DECIDING_MESSAGES = [
         "What would you like me to do?",
@@ -53,15 +68,24 @@ class DecidingCommand(State):
     def __init__(self, jeeves):
         super().__init__(jeeves)
         self.commands = self._load_commands()
+        self.intent_to_command = {command.INTENT_VALUE: command for command in self.commands}
 
     def _load_commands(self):
         return Command.__subclasses__()
 
     def match_commands(self, input_phrase):
-        prob_matches = {cmd: cmd.prob_match(input_phrase) for cmd in self.commands}
-        matches = [cmd for cmd, prob in prob_matches.items() if prob >= self.jeeves.COMMAND_THRESHOLD]
+        response = self.wit_text_call(input_phrase)
+        entities = response.get('entities', [])
+        intents = [
+            intent['value'] for intent in entities.get('intent', []) if intent['confidence'] > self.INTENT_THRESHOLD
+            ]
 
-        return matches
+        print(intents)
+        matching_commands = [self.intent_to_command[intent] for intent in intents if intent in self.intent_to_command]
+        print(self.intent_to_command)
+        print(matching_commands)
+
+        return matching_commands
 
     def handle_no_matches(self):
         while not self.matches and self.num_retries < self.max_retries:

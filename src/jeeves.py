@@ -2,8 +2,10 @@ import speech_recognition as sr
 from fuzzywuzzy import fuzz
 import subprocess
 import numpy as np
+import os
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
+from wit import Wit
 from .states import Quiescent, RunningCommand
 from .commands import Command  # grab all commands that are subclasses of the Command ABC
 
@@ -124,7 +126,8 @@ class Jeeves:
         """ Starts Jeeves """
         self.r = sr.Recognizer()
         self.mic = sr.Microphone()
-
+        self.wit = Wit(os.environ['WIT_ACCESS_TOKEN'])
+        
         while True:
             print(self.state)
             self.state = self.state.run()

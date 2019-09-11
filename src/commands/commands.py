@@ -35,25 +35,12 @@ class Command(ABC):
         return cb.response_payload['unlock_status']
 
     @classmethod
-    def prob_match(cls, input_phrase):
-        prob_match = max([fuzz.ratio(input_phrase, phrase) for phrase in cls.PHRASES])
-
-        return prob_match
-
-    @property
-    @classmethod
-    @abstractmethod
-    def PHRASES(cls):
-        raise NotImplementedError
-
-    @classmethod
     @abstractmethod
     def run(cls):
         raise NotImplementedError
 
 class WhoAmI(Command):
-    PHRASES = ["who are you", "what's your name", "what is your name", 
-    "tell me your name", "who am i speaking to", "tell me who you are"]
+    INTENT_VALUE = "name_get"
 
     def __str__(self):
         return "Tell you who I am"
@@ -66,31 +53,11 @@ class WhoAmI(Command):
 
 
 class ChangeUserName(Command):
-    PHRASES = [
-        "call me NAME",
-        "change my name to NAME",
-        "start calling me NAME",
-        "I want you to call me NAME",
-        "you shall call me NAME from now on",
-    ]
+
+    INTENT_VALUE = "username_set"
 
     def __str__(self):
         return "Change the name I know you by"
-
-    @classmethod
-    def valid_phrase(cls, input_phrase, jeeves=None):
-
-        prob_match = max(
-            [
-                gmean([fuzz.partial_ratio(input_phrase, sub_phrase) for sub_phrase in phrase.split("NAME")])
-                for phrase in cls.PHRASES
-            ]
-        )
-
-        if prob_match >= jeeves.COMMAND_THRESHOLD:
-            return True
-
-        return False
 
     @staticmethod
     @password_protected
