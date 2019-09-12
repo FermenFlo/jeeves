@@ -1,1 +1,1 @@
-from .commands import Command
+from jeeves.src.commands.commands import Command

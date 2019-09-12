@@ -6,8 +6,8 @@ import os
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 from wit import Wit
-from .states import Quiescent, RunningCommand
-from .commands import Command  # grab all commands that are subclasses of the Command ABC
+from jeeves.src.states.states import Quiescent, RunningCommand
+from jeeves.src.commands import Command  # grab all commands that are subclasses of the Command ABC
 
 
 class Jeeves:

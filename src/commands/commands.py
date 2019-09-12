@@ -2,7 +2,7 @@ import subprocess
 from fuzzywuzzy import fuzz
 from scipy.stats.mstats import gmean
 from abc import ABC, abstractmethod
-from .callbacks import *
+from jeeves.src.commands.callbacks import *
 
 def password_protected(function):
     def protected_function(*args, **kwargs):

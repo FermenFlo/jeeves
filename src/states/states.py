@@ -1,7 +1,7 @@
 import numpy as np
 from abc import ABC, abstractmethod
 from fuzzywuzzy import fuzz
-from ..commands import Command
+from jeeves.src.commands import Command
 
 
 class State(ABC):
