@@ -26,7 +26,6 @@ class Jeeves:
         "What?",
         "bruh, speak up",
         "sorry, I don't speak italian.",
-        f"you should speak up, {DEFAULT_USER_NAME}",
         "aaaaaaaaa I'm awake. I totally wasn't sleeping.",
     ]
 
@@ -40,14 +39,10 @@ class Jeeves:
         self.commands = self._load_commands()
         self.current_phrase = ""
 
-        self.FALLBACK_MESSAGES = [
-        "I'm sorry, I didn't quite catch that. Maybe try annunciating for once in your god damn life",
-        "What?",
-        "bruh, speak up",
-        "sorry, I don't speak italian.",
+        self.FALLBACK_MESSAGES += [
         f"you should speak up, {self.user_name}",
-        "aaaaaaaaa I'm awake. I totally wasn't sleeping.",
     ]
+        self.awakeners = [] # TODO Make this read from a config
 
     def _load_commands(self):
         return Command.__subclasses__()
