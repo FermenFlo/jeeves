@@ -2,7 +2,7 @@ import subprocess
 from fuzzywuzzy import fuzz
 from scipy.stats.mstats import gmean
 from abc import ABC, abstractmethod
-from jeeves.src.commands.callbacks import *
+from .callbacks import PasswordCallback, SuccessCallback
 
 def password_protected(function):
     def protected_function(*args, **kwargs):
@@ -33,6 +33,23 @@ class Command(ABC):
             cb = self.jeeves.state.parse_general_callback(cb)
 
         return cb.response_payload['unlock_status']
+
+    def wit_text_call(self, text):
+        response = self.jeeves.wit.message(text)
+
+        return response['entities']
+
+    @classmethod
+    @abstractmethod
+    def run(cls):
+        raise NotImplementedError
+
+class InternalCommand(ABC):
+    """ An internal command is a command not directly activated by the user. Examples include a timer
+    being set off. While not activated by the user, the proccess still manifests itself as a running command. """
+
+    def __init__(self, jeeves):
+        self.jeeves = jeeves
 
     @classmethod
     @abstractmethod

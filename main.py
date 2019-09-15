@@ -1,7 +1,7 @@
 from nltk.tag import StanfordPOSTagger
 from nltk import word_tokenize
 
-from src.jeeves import Jeeves
+from src.jeeves_bot import Jeeves
 import warnings
 
 warnings.filterwarnings("ignore", category=RuntimeWarning)

@@ -14,6 +14,7 @@ class State(ABC):
 
     def wit_text_call(self, text):
         response = self.jeeves.wit.message(text)
+        self.jeeves.wit_response = response
 
         # Sort by highest probablilities first
         for entity_list in response.get('entities', {}).values():
@@ -45,10 +46,24 @@ class Quiescent(State):
 
             return True
 
+    @property
+    def current_awakener(self):
+        for awakener in self.jeeves.awakeners:
+            if awakener.activated:
+                return self.jeeves.awakeners.pop(awakener)
+
+
     def run(self):
         while True:
+
+            if self.current_awakener is not None:
+                return self.current_awakener.run_command(self.jeeves)
+
             if self.activated:
                 return DecidingCommand(self.jeeves)
+
+            
+
 
 
 class DecidingCommand(State):
@@ -81,8 +96,8 @@ class DecidingCommand(State):
             ]
 
         print(intents)
+        print(Command.__subclasses__())
         matching_commands = [self.intent_to_command[intent] for intent in intents if intent in self.intent_to_command]
-        print(self.intent_to_command)
         print(matching_commands)
 
         return matching_commands
@@ -152,7 +167,6 @@ class RunningCommand(State):
 
         else:
             self.callback.n_attempts -= 1
-            n_attempts = self.callback.n_attempts
             self.jeeves.password_unlocked = False
 
             self.jeeves.say("Incorrect password!" + 
