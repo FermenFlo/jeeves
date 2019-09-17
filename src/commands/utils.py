@@ -1,4 +1,5 @@
 from abc import ABC
 
-class APIRequest:
+
+class APIRequest(ABC):
     pass

@@ -1,5 +1,4 @@
 import speech_recognition as sr
-from fuzzywuzzy import fuzz
 import subprocess
 import numpy as np
 import os
@@ -39,10 +38,8 @@ class Jeeves:
         self.commands = self._load_commands()
         self.current_phrase = ""
 
-        self.FALLBACK_MESSAGES += [
-        f"you should speak up, {self.user_name}",
-    ]
-        self.awakeners = [] # TODO Make this read from a config
+        self.FALLBACK_MESSAGES += [f"you should speak up, {self.user_name}"]
+        self.awakeners = []  # TODO Make this read from a config
 
     def _load_commands(self):
         return Command.__subclasses__()
@@ -88,7 +85,6 @@ class Jeeves:
         if isinstance(self.state, RunningCommand):
             return self.state.command
 
-
     def listen(self, n_seconds=None):
         """ Standard method to listening for requests. Doesn't require activation phrase.
         Limit input windows with n_seconds. """
@@ -121,8 +117,8 @@ class Jeeves:
         """ Starts Jeeves """
         self.r = sr.Recognizer()
         self.mic = sr.Microphone()
-        self.wit = Wit(os.environ['WIT_ACCESS_TOKEN'])
-        
+        self.wit = Wit(os.environ["WIT_ACCESS_TOKEN"])
+
         while True:
             print(self.state)
             self.state = self.state.run()

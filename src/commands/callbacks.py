@@ -57,7 +57,7 @@ class PasswordCallback(Callback):
     to True and result in an unlock that lasts for 5 minutes for the current user. Otherwise, the payload
     value will remain False and Jeeves will remain password-protected. """
 
-    def __init__(self, response_payload={"unlock_status": False}, n_attempts = 3):
+    def __init__(self, response_payload={"unlock_status": False}, n_attempts=3):
         self.response_payload = response_payload
         self.n_attempts = n_attempts
 
@@ -65,6 +65,7 @@ class PasswordCallback(Callback):
     callback_type = "password"
     response_payload = {"unlock_status": False}
     n_attempts = 3
+
 
 class InputCallback(Callback):
     """ The input callback is special in that it allows further user input. The response payload is
@@ -97,5 +98,4 @@ class ConfirmationCallback(Callback):
 
     status = 1
     callback_type = "confirmation"
-    response_payload={"Are you sure?": False}
-
+    response_payload = {"Are you sure?": False}

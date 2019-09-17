@@ -1,1 +1,1 @@
-from jeeves.src.awakeners.awakeners import Awakener
+from .awakeners import Awakener

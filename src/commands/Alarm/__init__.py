@@ -1,1 +1,1 @@
-from .activate_alarm import ActivateAlarm
+from .set_alarm import SetAlarm

@@ -10,7 +10,7 @@ def password_protected(function):
         func_self = args[0]
         if func_self.send_password_callback():
             return function(*args, **kwargs)
-        
+
         else:
             pass
 
@@ -27,7 +27,7 @@ class Command(ABC):
             return True
 
         self.jeeves.say("This is a protected command. What is the password?")
-        
+
         cb =  PasswordCallback()
         while cb.n_attempts > 0 and not cb.response_payload['unlock_status']:
             cb = self.jeeves.state.parse_general_callback(cb)
