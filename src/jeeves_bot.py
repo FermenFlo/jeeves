@@ -56,8 +56,6 @@ class Jeeves:
     def password_unlocked(self):
         now = datetime.utcnow()
         time_since_last_unlock = (now - self._last_password_unlock_time).seconds
-        print(self._last_password_unlock_time)
-        print(now)
 
         if time_since_last_unlock <= 300:  # 5 minute lockout time
             return True
@@ -92,6 +90,7 @@ class Jeeves:
 
         while datetime.utcnow() <= end_time:
             try:
+                # with sr.WavFile("/Users/brian/code/jeeves/timer_test.wav") as source:
                 with self.mic as source:
                     self.r.adjust_for_ambient_noise(source)
                     audio = self.r.listen(source)

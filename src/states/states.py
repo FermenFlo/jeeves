@@ -48,13 +48,15 @@ class Quiescent(State):
     def current_awakener(self):
         for awakener in self.jeeves.awakeners:
             if awakener.activated:
-                return self.jeeves.awakeners.pop(awakener)
+                return awakener
 
     def run(self):
         while True:
 
             if self.current_awakener is not None:
-                return self.current_awakener.run_command(self.jeeves)
+                awakener = self.current_awakener
+                self.jeeves.awakeners.remove(awakener)
+                return awakener.run_command(self.jeeves)
 
             if self.activated:
                 return DecidingCommand(self.jeeves)
@@ -85,11 +87,7 @@ class DecidingCommand(State):
             intent["value"] for intent in entities.get("intent", []) if intent["confidence"] > self.INTENT_THRESHOLD
         ]
 
-        print(intents)
-        print(Command.__subclasses__())
         matching_commands = [self.intent_to_command[intent] for intent in intents if intent in self.intent_to_command]
-        print(matching_commands)
-
         return matching_commands
 
     def handle_no_matches(self):
@@ -144,7 +142,6 @@ class RunningCommand(State):
             payload["unlock_status"] = True
 
         input_password = self.listen(10)
-        print(input_password)
 
         if any([fuzz.ratio(x, self.jeeves.PASSWORD) > self.jeeves.PASSWORD_THRESHOLD for x in input_password.split()]):
             if np.random.random() < 0.05:

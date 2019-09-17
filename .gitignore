@@ -57,6 +57,7 @@ target/
 .idea/
 *.vim
 *~
+.vscode
 
 # VS Code history extension
 .history/*

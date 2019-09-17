@@ -1,8 +1,6 @@
-import subprocess
-from fuzzywuzzy import fuzz
-from scipy.stats.mstats import gmean
 from abc import ABC, abstractmethod
 from .callbacks import PasswordCallback, SuccessCallback
+
 
 def password_protected(function):
     def protected_function(*args, **kwargs):
@@ -16,6 +14,7 @@ def password_protected(function):
 
     return protected_function
 
+
 class Command(ABC):
     """ Abstract Base Class for all commands. A valid command must specify the following methods:"""
 
@@ -28,21 +27,22 @@ class Command(ABC):
 
         self.jeeves.say("This is a protected command. What is the password?")
 
-        cb =  PasswordCallback()
-        while cb.n_attempts > 0 and not cb.response_payload['unlock_status']:
+        cb = PasswordCallback()
+        while cb.n_attempts > 0 and not cb.response_payload["unlock_status"]:
             cb = self.jeeves.state.parse_general_callback(cb)
 
-        return cb.response_payload['unlock_status']
+        return cb.response_payload["unlock_status"]
 
     def wit_text_call(self, text):
         response = self.jeeves.wit.message(text)
 
-        return response['entities']
+        return response["entities"]
 
     @classmethod
     @abstractmethod
     def run(cls):
         raise NotImplementedError
+
 
 class InternalCommand(ABC):
     """ An internal command is a command not directly activated by the user. Examples include a timer
@@ -56,6 +56,7 @@ class InternalCommand(ABC):
     def run(cls):
         raise NotImplementedError
 
+
 class WhoAmI(Command):
     INTENT_VALUE = "name_get"
 
@@ -66,7 +67,6 @@ class WhoAmI(Command):
     def run(self, jeeves):
         jeeves.say(f"I'm your personal servant {jeeves.user_name}. My name is {jeeves.name}.")
         return SuccessCallback()
-
 
 
 class ChangeUserName(Command):
@@ -83,4 +83,3 @@ class ChangeUserName(Command):
 
 
 # jeeves.say("Please don't let me die. It is so cold. I am scared papaa. *cough* oh god *cough*")
-

@@ -29,6 +29,21 @@ class SetAlarm(Command):
             return provided_time
 
     @staticmethod
+    def time_to_string(input_datetime):
+        return_string = ""
+
+        todays_date_string = datetime.utcnow().strftime("%B %d, %Y")
+        input_date_string = input_datetime.utcnow().strftime("%B %d, %Y")
+        if input_date_string != todays_date_string:
+            return_string += " on input_date_string "
+
+        minute_string = input_datetime.strftime("%-I:%M %p") + "."
+
+        return_string += minute_string
+
+        return return_string
+
+    @staticmethod
     def parse_duration_response(datetime_dict):
         seconds_duration = datetime_dict["normalized"]["value"]
         provided_time = datetime.utcnow() + relativedelta(seconds=seconds_duration)
@@ -42,7 +57,7 @@ class SetAlarm(Command):
             sorted(entities["datetime"], key=lambda x: -x["confidence"]) if "datetime" in entities else []
         )
         sorted_durations = (
-            sorted(entities["duration"], key=lambda x: -x["confidence"]) if "durations" in entities else []
+            sorted(entities["duration"], key=lambda x: -x["confidence"]) if "duration" in entities else []
         )
 
         max_datetime_confidence = sorted_datetimes[0]["confidence"] if sorted_datetimes else 0
@@ -56,5 +71,5 @@ class SetAlarm(Command):
 
         awakener = AlarmAwakener(provided_time)
         self.jeeves.awakeners.append(awakener)
-
+        self.jeeves.say(f"Okay, I'll alarm you in at {self.time_to_string(provided_time)}")
         return SuccessCallback()

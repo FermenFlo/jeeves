@@ -25,8 +25,6 @@ class ActivateAlarm(InternalCommand):
 
         while datetime.utcnow() <= stop_time:
             subprocess.call(["afplay", self.alarm_file])
-            return SuccessCallback()
 
-
-if __name__ == "__main__":
-    pass
+        self.jeeves.say("Your timer has expired.")
+        return SuccessCallback()
