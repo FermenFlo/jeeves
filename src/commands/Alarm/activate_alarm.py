@@ -1,9 +1,8 @@
 import numpy as np
 import os
+import arrow
 from jeeves.src.commands import InternalCommand
 from jeeves.src.commands.callbacks import SuccessCallback
-from dateutil.relativedelta import relativedelta
-from datetime import datetime
 import subprocess
 
 
@@ -21,9 +20,9 @@ class ActivateAlarm(InternalCommand):
         return chosen_file
 
     def run(self, jeeves):
-        stop_time = datetime.utcnow() + relativedelta(seconds=self.length)
+        stop_time = arrow.utcnow().shift(seconds=self.length)
 
-        while datetime.utcnow() <= stop_time:
+        while arrow.utcnow() <= stop_time:
             subprocess.call(["afplay", self.alarm_file])
 
         self.jeeves.say("Your timer has expired.")

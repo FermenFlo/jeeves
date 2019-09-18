@@ -1,9 +1,8 @@
 from jeeves.src.awakeners.alarm_awakener import AlarmAwakener
 from jeeves.src.commands.callbacks import SuccessCallback
 from jeeves.src.commands.commands import Command
-from dateutil import parser
-from datetime import datetime
-from dateutil.relativedelta import relativedelta
+import arrow
+from dateutil import tz
 
 
 class SetAlarm(Command):
@@ -18,37 +17,21 @@ class SetAlarm(Command):
 
         if response_type == "value":
             response_time = datetime_dict["value"]
-            provided_time = parser.parse(response_time, ignoretz=True)
 
-            return provided_time
-
-        if response_type == "interval":
+        elif response_type == "interval":
             response_time = datetime_dict["to"]
-            provided_time = parser.parse(response_time, ignoretz=True)
 
-            return provided_time
-
-    @staticmethod
-    def time_to_string(input_datetime):
-        return_string = ""
-
-        todays_date_string = datetime.utcnow().strftime("%B %d, %Y")
-        input_date_string = input_datetime.utcnow().strftime("%B %d, %Y")
-        if input_date_string != todays_date_string:
-            return_string += " on input_date_string "
-
-        minute_string = input_datetime.strftime("%-I:%M %p") + "."
-
-        return_string += minute_string
-
-        return return_string
+        provided_time = arrow.get(response_time)
+        tz_provided_time = provided_time.to(tz.tzlocal())
+        return tz_provided_time
 
     @staticmethod
     def parse_duration_response(datetime_dict):
         seconds_duration = datetime_dict["normalized"]["value"]
-        provided_time = datetime.utcnow() + relativedelta(seconds=seconds_duration)
+        provided_time = arrow.utcnow().shift(seconds=seconds_duration)
+        tz_provided_time = provided_time.to(tz.tzlocal())
 
-        return provided_time
+        return tz_provided_time
 
     def run(self, jeeves):
         entities = self.jeeves.wit_response["entities"]
@@ -71,5 +54,18 @@ class SetAlarm(Command):
 
         awakener = AlarmAwakener(provided_time)
         self.jeeves.awakeners.append(awakener)
-        self.jeeves.say(f"Okay, I'll alarm you in at {self.time_to_string(provided_time)}")
+
+        if arrow.utcnow() > provided_time:
+            # Easter egg
+            self.jeeves.say(f"Okay, I'll build a time machine and then alert you {provided_time.humanize()}")
+
+        else:
+            self.jeeves.say(f"Okay, I'll alert you {provided_time.humanize()}")
+
+        print(
+            [
+                (x.awaken_time.day, x.awaken_time.hour, x.awaken_time.minute, x.awaken_time.second)
+                for x in self.jeeves.awakeners
+            ]
+        )
         return SuccessCallback()

@@ -2,8 +2,7 @@ import speech_recognition as sr
 import subprocess
 import numpy as np
 import os
-from datetime import datetime
-from dateutil.relativedelta import relativedelta
+import arrow
 from wit import Wit
 from jeeves.src.states.states import Quiescent, RunningCommand
 from jeeves.src.commands import Command  # grab all commands that are subclasses of the Command ABC
@@ -33,7 +32,7 @@ class Jeeves:
         self._user_name = self.DEFAULT_USER_NAME
         self._name = self.DEFAULT_NAME
 
-        self._last_password_unlock_time = datetime.min  # long time ago
+        self._last_password_unlock_time = arrow.Arrow(1, 1, 1)  # long time ago
 
         self.commands = self._load_commands()
         self.current_phrase = ""
@@ -54,7 +53,7 @@ class Jeeves:
 
     @property
     def password_unlocked(self):
-        now = datetime.utcnow()
+        now = arrow.utcnow()
         time_since_last_unlock = (now - self._last_password_unlock_time).seconds
 
         if time_since_last_unlock <= 300:  # 5 minute lockout time
@@ -65,10 +64,10 @@ class Jeeves:
     @password_unlocked.setter
     def password_unlocked(self, input_value):
         if input_value is True:
-            self._last_password_unlock_time = datetime.utcnow()
+            self._last_password_unlock_time = arrow.utcnow()
 
         else:
-            self._last_password_unlock_time = datetime.min
+            self._last_password_unlock_time = arrow.Arrow(1, 1, 1)  # minimum value for arrow package
 
     @property
     def name(self):
@@ -86,12 +85,17 @@ class Jeeves:
     def listen(self, n_seconds=None):
         """ Standard method to listening for requests. Doesn't require activation phrase.
         Limit input windows with n_seconds. """
-        end_time = (datetime.utcnow() + relativedelta(seconds=n_seconds)) if n_seconds else datetime.max
+        end_time = (
+            arrow.utcnow().shift(seconds=n_seconds) if n_seconds else arrow.Arrow(9999, 12, 31, 23, 59, 59, 999999)
+        )  # arrow's max
 
-        while datetime.utcnow() <= end_time:
+        while arrow.utcnow() <= end_time:
+            # TODO
+            if self.awakeners:
+                continue
             try:
-                # with sr.WavFile("/Users/brian/code/jeeves/timer_test.wav") as source:
-                with self.mic as source:
+                with sr.WavFile("/Users/brian/code/jeeves/timer_test.wav") as source:
+                    # with self.mic as source:
                     self.r.adjust_for_ambient_noise(source)
                     audio = self.r.listen(source)
                     phrase = self.r.recognize_google(audio).lower()
