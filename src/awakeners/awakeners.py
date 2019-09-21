@@ -1,4 +1,4 @@
-from datetime import datetime
+import arrow
 from abc import ABC, abstractmethod
 
 
@@ -18,7 +18,7 @@ class Awakener(ABC):
 
     @property
     def activated(self):
-        if datetime.utcnow() >= self.awaken_time:
+        if arrow.utcnow() >= self.awaken_time:
             return True
 
         return False
