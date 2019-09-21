@@ -4,8 +4,10 @@ import numpy as np
 import os
 import arrow
 from wit import Wit
-from jeeves.src.states.states import Quiescent, RunningCommand
+import asyncio
+from jeeves.src.states.states import Quiescent
 from jeeves.src.commands import Command  # grab all commands that are subclasses of the Command ABC
+import asyncio
 
 
 class Jeeves:
@@ -35,7 +37,7 @@ class Jeeves:
         self._last_password_unlock_time = arrow.Arrow(1, 1, 1)  # long time ago
 
         self.commands = self._load_commands()
-        self.current_phrase = ""
+        self.current_phrase = asyncio.Future()
 
         self.FALLBACK_MESSAGES += [f"you should speak up, {self.user_name}"]
         self.awakeners = []  # TODO Make this read from a config
@@ -77,34 +79,51 @@ class Jeeves:
     def name(self, input_name):
         self._name = input_name.lower()
 
-    @property
-    def active_command(self):
-        if isinstance(self.state, RunningCommand):
-            return self.state.command
+    def listening_callback(self, recognizer, audio):
 
-    def listen(self, n_seconds=None):
+        try:
+            if not self.phrase.done():
+                phrase = r.recognize_google(audio).lower()
+                self.phrase.set_result(phrase)
+
+        except sr.UnknownValueError:
+            pass
+
+    async def listen(self, n_seconds=None):
         """ Standard method to listening for requests. Doesn't require activation phrase.
-        Limit input windows with n_seconds. """
+        Limit input window with n_seconds. """
+        self.phrase = asyncio.Future()  # should always be a string prior to this point
         end_time = (
             arrow.utcnow().shift(seconds=n_seconds) if n_seconds else arrow.Arrow(9999, 12, 31, 23, 59, 59, 999999)
         )  # arrow's max
 
-        while arrow.utcnow() <= end_time:
-            # TODO
-            if self.awakeners:
-                continue
+        while not self.phrase.done() and arrow.utcnow() <= end_time:
+            with mic as source:
+                r.adjust_for_ambient_noise(source)
+                # with sr.WavFile("/Users/brian/code/jeeves/timer_test.wav") as source:
+
+            # returns a callable which will terminate the extra thread for listening
+            stop_listening = r.listen_in_background(mic, self.callback)
+
             try:
-                with sr.WavFile("/Users/brian/code/jeeves/timer_test.wav") as source:
-                    # with self.mic as source:
-                    self.r.adjust_for_ambient_noise(source)
-                    audio = self.r.listen(source)
-                    phrase = self.r.recognize_google(audio).lower()
-                    return phrase
+                await asyncio.wait_for(self.phrase, n_secs)
+                break
 
-            except sr.UnknownValueError:
-                continue
+            except TimeoutError:  # thrown by asyncio.wait_for
+                break
 
-        return ""  # Didn't get any input
+        stop_listening()
+        self.phrase = self.phrase.result() if self.phrase.done() else ""
+
+        return self.phrase
+
+    async def check_awakeners(self):
+        while not self.activated:  # while not activated
+            for i in range(len(self.awakeners)):
+                self.awakeners[i] += 1
+
+                # if isinstance(self.phrase, asyncio.Future):
+            await asyncio.sleep(1)
 
     def say(self, text=None, wait=True):
         """ Speaks """
