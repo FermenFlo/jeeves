@@ -2,6 +2,7 @@ import numpy as np
 from abc import ABC, abstractmethod
 from fuzzywuzzy import fuzz
 from jeeves.src.commands import Command
+import asyncio
 
 
 class State(ABC):
@@ -34,32 +35,54 @@ class State(ABC):
 class Quiescent(State):
     @property
     def activated(self):
-        phrase = self.listen()
-        name_called_probs = [fuzz.ratio(x, self.jeeves.name) for x in phrase.split()[:5]]
-        name_called_prob = max(name_called_probs)
+        if not (self.jeeves.current_phrase or self.jeeves.current_awakener):
+            return False
 
-        if name_called_prob >= self.jeeves.NAME_THRESHOLD:
-            cutoff_ind = name_called_probs.index(name_called_prob) + 1
-            self.jeeves.current_phrase = " ".join(phrase.split()[cutoff_ind:])
-
+        elif self.jeeves.current_awakener:
             return True
 
-    @property
-    def current_awakener(self):
-        for awakener in self.jeeves.awakeners:
-            if awakener.activated:
-                return awakener
+        else:
+            name_called_probs = [fuzz.ratio(x, self.jeeves.name) for x in self.jeeves.current_phrase.split()[:5]]
+            name_called_prob = max(name_called_probs)
+
+            if name_called_prob >= self.jeeves.NAME_THRESHOLD:
+                cutoff_ind = name_called_probs.index(name_called_prob) + 1
+                self.jeeves.current_phrase = " ".join(self.jeeves.current_phrase.split()[cutoff_ind:])
+
+                return True
+
+        return False
+
+    async def listen_in_background(self):
+        while not self.activated:
+            self.jeeves.listen()
+
+        stop_listening()
+        self.phrase = self.phrase.result() if self.phrase.done() else ""
+
+    async def check_awakener(self):
+        while not self.activated:
+            for awakener in self.jeeves.awakeners:
+                if awakener.activated:
+                    self.current_awakener = awakener
+
+    async def listen_and_wait(self):
+        await asyncio.gather(self.listen_in_background(), self.jeeves.check_awakeners())
 
     def run(self):
-        while True:
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(self.listen_and_wait())
+        loop.close()
 
-            if self.current_awakener is not None:
-                awakener = self.current_awakener
-                self.jeeves.awakeners.remove(awakener)
-                return awakener.run_command(self.jeeves)
+        print(type(loop_result))
 
-            if self.activated:
-                return DecidingCommand(self.jeeves)
+        # if self.current_awakener is not None:
+        #     awakener = self.current_awakener
+        #     self.jeeves.awakeners.remove(awakener)
+        #     return awakener.run_command(self.jeeves)
+
+        # if self.activated:
+        #     return DecidingCommand(self.jeeves)
 
 
 class DecidingCommand(State):

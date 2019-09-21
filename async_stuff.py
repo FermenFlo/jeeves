@@ -10,7 +10,7 @@ now = arrow.utcnow()
 class Test:
     def __init__(self):
         self.phrase = asyncio.Future()
-        self.awaiters = [1, 2, 3]
+        self.awakeners = [1, 2, 3]
 
     def callback(self, recognizer, audio):
         print("called back!")
@@ -49,7 +49,6 @@ class Test:
         return self.phrase
 
     async def check_awakeners(self):
-
         while isinstance(self.phrase, asyncio.Future):  # while not activated
             for i in range(len(self.awakeners)):
                 self.awakeners[i] += 1
@@ -58,11 +57,12 @@ class Test:
             await asyncio.sleep(1)
 
     async def main(self):
-        await asyncio.gather(self.listen(10), self.check_awaiters())
+        await asyncio.gather(self.listen(10), self.check_awakeners())
 
     def run(self):
         loop = asyncio.get_event_loop()
-        loop.run_until_complete(self.main())
+        output = loop.run_until_complete(self.main())
+        print(output)
         loop.close()
 
 
