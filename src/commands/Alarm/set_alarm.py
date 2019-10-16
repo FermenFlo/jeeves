@@ -19,7 +19,7 @@ class SetAlarm(Command):
             response_time = datetime_dict["value"]
 
         elif response_type == "interval":
-            response_time = datetime_dict["to"]
+            response_time = datetime_dict["to"]["value"]
 
         provided_time = arrow.get(response_time)
         tz_provided_time = provided_time.to(tz.tzlocal())
@@ -62,10 +62,4 @@ class SetAlarm(Command):
         else:
             self.jeeves.say(f"Okay, I'll alert you {provided_time.humanize()}")
 
-        print(
-            [
-                (x.awaken_time.day, x.awaken_time.hour, x.awaken_time.minute, x.awaken_time.second)
-                for x in self.jeeves.awakeners
-            ]
-        )
         return SuccessCallback()

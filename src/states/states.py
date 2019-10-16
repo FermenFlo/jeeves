@@ -2,6 +2,7 @@ import numpy as np
 from abc import ABC, abstractmethod
 from fuzzywuzzy import fuzz
 from jeeves.src.commands import Command
+import arrow
 
 
 class State(ABC):
@@ -35,6 +36,10 @@ class Quiescent(State):
     @property
     def activated(self):
         phrase = self.listen()
+        print(phrase)
+        if not phrase:
+            return False
+
         name_called_probs = [fuzz.ratio(x, self.jeeves.name) for x in phrase.split()[:5]]
         name_called_prob = max(name_called_probs)
 

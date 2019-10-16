@@ -12,8 +12,8 @@ class Jeeves:
     """ Jeeves """
 
     DEFAULT_USER_NAME = "brian"
-    DEFAULT_NAME = "samantha"
-    PASSWORD = "turtle"
+    DEFAULT_NAME = "alex"
+    PASSWORD = "what are you gay"
 
     NAME_THRESHOLD = 75
     COMMAND_THRESHOLD = 60
@@ -38,10 +38,18 @@ class Jeeves:
         self.current_phrase = ""
 
         self.FALLBACK_MESSAGES += [f"you should speak up, {self.user_name}"]
-        self.awakeners = []  # TODO Make this read from a config
+        self._awakeners = []  # TODO Make this read from a config
 
     def _load_commands(self):
         return Command.__subclasses__()
+
+    @property
+    def awakeners(self):
+        return self._awakeners
+
+    @awakeners.setter
+    def awakeners(self, input_list):
+        self._awakeners = sorted(input_list, key=lambda x: x.awaken_time)
 
     @property
     def user_name(self):
@@ -85,17 +93,18 @@ class Jeeves:
     def listen(self, n_seconds=None):
         """ Standard method to listening for requests. Doesn't require activation phrase.
         Limit input windows with n_seconds. """
-        end_time = (
-            arrow.utcnow().shift(seconds=n_seconds) if n_seconds else arrow.Arrow(9999, 12, 31, 23, 59, 59, 999999)
-        )  # arrow's max
+        arrow_max = arrow.Arrow(9999, 12, 31, 23, 59, 59, 999999)  # arrow's max
+        next_awaken_time = self.awakeners[0].awaken_time if self.awakeners else arrow_max
+        requested_end_time = arrow.utcnow().shift(seconds=n_seconds) if n_seconds else arrow_max
 
-        while arrow.utcnow() <= end_time:
+        actual_end_time = min(next_awaken_time, requested_end_time)
+        while arrow.utcnow() <= actual_end_time:
             # TODO
             if self.awakeners:
                 continue
             try:
-                with sr.WavFile("/Users/brian/code/jeeves/timer_test.wav") as source:
-                    # with self.mic as source:
+                # with sr.WavFile("/Users/brian/code/jeeves/timer_test.wav") as source:
+                with self.mic as source:
                     self.r.adjust_for_ambient_noise(source)
                     audio = self.r.listen(source)
                     phrase = self.r.recognize_google(audio).lower()
@@ -112,9 +121,9 @@ class Jeeves:
 
         # Wait for subprocess to complete or not
         if wait:
-            subprocess.call(["say", text])
+            subprocess.call(["say", text, "-v", self.DEFAULT_NAME])
         else:
-            subprocess.Popen(["say", text])
+            subprocess.Popen(["say", text, "-v", self.DEFAULT_NAME])
 
     def start(self):
         """ Starts Jeeves """
